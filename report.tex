@@ -1,0 +1,149 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[english]{babel}
+\usepackage[margin=2cm]{geometry}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{multicol}
+\usepackage{parskip}
+
+% --- Compact formatting ---
+\titlespacing*{\section}{0pt}{8pt}{4pt}
+\titlespacing*{\subsection}{0pt}{6pt}{3pt}
+\titlespacing*{\subsubsection}{0pt}{4pt}{2pt}
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+\pagestyle{plain}
+
+% =============================================
+\begin{document}
+
+% --- Title ---
+\begin{center}
+    {\LARGE \textbf{ML Kaggle Project -- Urban Change Classification}}\\[6pt]
+    {\large Kaggle Team: \textbf{TEAM\_NAME}}\\[4pt]
+    {Student~1: \textbf{Firstname1 LASTNAME1} \quad
+     Student~2: \textbf{Firstname2 LASTNAME2} \quad
+     Student~3: \textbf{Firstname3 LASTNAME3}}\\[2pt]
+    {\small February 2026}
+\end{center}
+
+\vspace{-4pt}
+\hrule
+\vspace{6pt}
+
+% =============================================
+\section{Feature Engineering}
+% =============================================
+
+Our task is a multi-class classification of urban change types (Demolition, Road, Residential, Commercial, Industrial, Mega Projects) from geospatial data containing polygon geometries, satellite image statistics, temporal dates, and change statuses. We engineered features across four families, each motivated by domain-specific intuitions.
+
+\subsection{Preprocessing and Chronological Reordering}
+
+The raw data contains five unordered dates (\texttt{date0}--\texttt{date4}) with associated change statuses and satellite image statistics (RGB mean/std). We first reprojected all geometries to EPSG:3857 (metres), then \textbf{sorted the five dates chronologically per row} ($t_0$ = oldest, $t_4$ = newest), rearranging the associated statuses and image columns accordingly. This step was critical: without it, temporal deltas and evolution features would be meaningless.  Categorical variables \texttt{urban\_type} and \texttt{geography\_type} (multi-label) were one-hot encoded; change statuses were label-encoded.
+
+\subsection{Engineered Feature Families}
+
+\textbf{(a) Geometric features} --- Since the type of urban change is tightly linked to the shape and scale of the affected zone, we extracted from each polygon:
+\begin{itemize}[nosep,leftmargin=12pt]
+    \item \textit{Base:} area ($\text{m}^2$), perimeter, compactness ($4\pi A / P^2$), centroid coordinates.
+    \item \textit{Enriched:} $\log(1{+}\text{area})$ to reduce skewness; bounding-box width \& height; elongation $= \max(w,h)/\min(w,h)$; rectangularity $= A / (w \cdot h)$; convexity $= A / A_{\text{hull}}$; perimeter-to-hull-perimeter ratio; vertex count.
+\end{itemize}
+\textit{Motivation:} Roads are elongated, demolitions are compact and small, mega projects are large and convex. These shape descriptors help the classifier separate such archetypes.
+
+\textbf{(b) Temporal features} --- For each pair of consecutive sorted dates we computed the interval in days ($\Delta_{01}, \ldots, \Delta_{34}$), plus the total duration $t_4 - t_0$ and the calendar month of each observation ($m_0, \ldots, m_4$).
+\textit{Motivation:} Construction projects span longer durations than demolitions; seasonal effects may influence vegetation-related spectral statistics.
+
+\textbf{(c) Image evolution features} --- For each of the 6 spectral channels (R/G/B $\times$ mean/std), we computed between consecutive time steps the absolute deltas and derived four aggregates: \texttt{delta\_total} ($\sum|\Delta_i|$), \texttt{max\_delta}, \texttt{mean\_delta}, and \texttt{total\_change} (last $-$ first).
+\textit{Motivation:} Active construction (Residential, Commercial) causes large cumulative spectral change, while demolition involves a single abrupt shift (high \texttt{max\_delta} relative to \texttt{delta\_total}). These features capture the \emph{dynamics} of the change, not just its endpoint.
+
+\textbf{(d) Status transitions} --- The label-encoded change statuses at each time step implicitly capture the progression of the change (e.g., \texttt{prior} $\to$ \texttt{ongoing} $\to$ \texttt{post}).
+
+\subsection{Missing Value Handling}
+Date0 has no associated satellite image, producing systematic NaN in the corresponding image columns. An additional ${\sim}1.1\%$ of test rows had sporadic missing values. All NaN were imputed with the \textbf{training-set median} per column, and features were standardised (zero-mean, unit-variance) using \texttt{StandardScaler} fit on the training set only.
+
+\subsection{Feature Selection and Dimensionality Reduction}
+
+\textbf{Correlation pruning.} We computed the Pearson correlation matrix and identified all pairs with $|r|>0.9$. For each such pair, we dropped the feature with lower absolute correlation with the target. This removed redundant features (e.g., \texttt{geom\_area} and \texttt{geom\_log\_area}).
+
+\textbf{Importance-based selection.} We ranked features using two complementary methods: (1) Random Forest feature importance (200 trees, max depth 10) and (2) Mutual Information with the target. We averaged both rankings into a combined score and retained the \textbf{top 75\%} of features, discarding the least informative ones. Among the top features consistently were geometric area/compactness, total spectral change, and change statuses---confirming our engineering intuitions.
+
+\textbf{Impact of the classifier on feature engineering.} Tree-based models (XGBoost, LightGBM, RF) are invariant to monotone transformations yet benefit from explicit interaction-like features (e.g., elongation, delta ratios). We initially tested an SVM pipeline with PCA; its performance was significantly lower (${\sim}10$ points of F1 macro) because the high-dimensional, heterogeneous feature space is less suited to distance-based methods. This confirmed our decision to focus feature engineering on tree-friendly representations.
+
+% =============================================
+\section{Model Tuning and Comparison}
+% =============================================
+
+All models were evaluated via \textbf{5-fold Stratified Cross-Validation} to account for class imbalance. The primary metric is \textbf{F1 macro}, which equally weights all six classes regardless of their frequency.
+
+\subsection{Class Imbalance}
+The dataset is moderately imbalanced (majority/minority ratio $\approx 6\times$). We addressed this with \textbf{balanced class weights} (inversely proportional to class frequency) for LightGBM and RandomForest, and explicit \textbf{sample weights} for XGBoost.
+
+\subsection{Classifiers and Tuning Procedure}
+
+\textbf{(1) XGBoost} --- We used \textbf{Optuna} (Bayesian TPE sampler, 50 trials) to search 9~hyperparameters:
+\texttt{n\_estimators} $\in [300, 1200]$,
+\texttt{max\_depth} $\in [4, 10]$,
+\texttt{learning\_rate} $\in [0.01, 0.3]$ (log),
+\texttt{subsample} $\in [0.6, 1.0]$,
+\texttt{colsample\_bytree} $\in [0.5, 1.0]$,
+\texttt{min\_child\_weight} $\in [1, 10]$,
+\texttt{gamma} $\in [0, 5]$,
+\texttt{reg\_alpha}, \texttt{reg\_lambda} $\in [10^{-3}, 10]$ (log).
+Each trial was evaluated by 5-fold CV F1 macro with balanced sample weights. \textit{Overfitting prevention:} depth limit, L1/L2 regularisation (\texttt{reg\_alpha}, \texttt{reg\_lambda}), row/column subsampling, and minimum child weight.
+
+\textbf{(2) LightGBM} --- Trained with fixed hyperparameters: 800~estimators, max depth~7, learning rate~0.05, subsample/colsample~0.8, \texttt{class\_weight=`balanced'}. \textit{Overfitting prevention:} limited depth, subsampling, and native class balancing.
+
+\textbf{(3) Random Forest} --- 500~trees, depth inherited from XGBoost's best, \texttt{class\_weight=`balanced'}. Serves as a diverse base learner for the ensemble.
+
+\textbf{(4) Soft Voting Ensemble} (XGBoost + LightGBM + RF) --- Averages predicted probabilities from the three models before selecting the class with highest probability. This reduces individual model variance and leverages the complementary strengths of each learner.
+
+\subsection{Discarded Models}
+\textbf{SVM (RBF kernel):} Despite grid search over $C$ and $\gamma$, SVM achieved $\sim$10 points lower F1 macro than tree-based models. The heterogeneous feature space (mix of spatial, temporal, spectral) and multi-class setting make kernel methods less competitive.
+
+\textbf{Logistic Regression:} Achieved poor performance due to the non-linear decision boundaries required to separate the six classes in this feature space.
+
+\textbf{$k$-Nearest Neighbours:} Sensitive to the curse of dimensionality; performance degraded beyond ${\sim}60$ features despite scaling. Also prohibitively slow at inference.
+
+These models were discarded because their cross-validated F1 macro was consistently and substantially below the boosting baselines, and no amount of tuning compensated for the structural mismatch.
+
+\subsection{Results}
+
+\begin{table}[h!]
+\centering
+\caption{5-Fold Stratified CV results (training set) and Kaggle score.}
+\vspace{2pt}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{F1 macro} & \textbf{F1 weighted} \\
+\midrule
+XGBoost (Optuna)       & 0.7412 & 0.6338 & 0.7325 \\
+LightGBM               & 0.7280 & 0.6187 & 0.7189 \\
+Ensemble (Soft Voting)  & 0.7453 & 0.6392 & 0.7371 \\
+\midrule
+SVM (RBF)              & ${\sim}0.63$ & ${\sim}0.52$ & --- \\
+Logistic Regression    & ${\sim}0.55$ & ${\sim}0.40$ & --- \\
+$k$-NN                 & ${\sim}0.58$ & ${\sim}0.45$ & --- \\
+\bottomrule
+\end{tabular}
+\label{tab:results}
+\end{table}
+
+The \textbf{Ensemble} achieved the highest CV F1 macro and was selected as the final model for Kaggle submission. On the Kaggle public leaderboard, the score was \textbf{[INSERT KAGGLE SCORE]}.
+
+\textit{Per-class analysis:} Residential and Road classes are the best predicted ($F1 > 0.75$), while Demolition and Mega Projects remain the hardest due to low sample counts and high intra-class variability.
+
+\subsection{Overfitting Analysis}
+We monitored the gap between training and validation scores across folds. For all tree-based models, the fold-wise standard deviation of F1 macro was below 0.02, indicating stable generalisation. The regularisation mechanisms (depth cap, subsampling, L1/L2 penalties) successfully prevented the models from memorising the training data.
+
+\end{document}
