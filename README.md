@@ -1,7 +1,5 @@
 # Urban Pattern Recognition
 
-Une vitrine projet simple et efficace pour l'analyse des motifs urbains.
-
 🌆 **But du projet**
 
 - Explorer et reconnaître des motifs urbains à partir de données géospatiales (GeoJSON).
@@ -45,10 +43,3 @@ Ouvrez ensuite `Notebook.ipynb` dans Jupyter Lab/Notebook.
 
 - Un exemple de soumission est présent dans `outputs/submission_hybrid.csv`.
 
-**À propos / Contact**
-
-Si vous voulez une démo, une version web ou intégrer ce pipeline dans un workflow CI, contactez-moi.
-
----
-
-Merci d'avoir regardé ! Si vous souhaitez un badge, une capture d'écran ou une page de démonstration, je peux l'ajouter.
