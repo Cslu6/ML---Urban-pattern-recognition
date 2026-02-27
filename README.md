@@ -1,59 +1,54 @@
-# ML Kaggle Project - Change Type Classification
+# Urban Pattern Recognition
 
-Projet de classification multi-classe pour identifier le type de changement urbain à partir de données géospatiales.
+Une vitrine projet simple et efficace pour l'analyse des motifs urbains.
 
-## Setup Instructions
+🌆 **But du projet**
 
-### 1. Cloner le projet
-```bash
-git clone https://github.com/Cslu6/ML---Projet-Kaggle.git
-cd ML---Projet-Kaggle
-```
+- Explorer et reconnaître des motifs urbains à partir de données géospatiales (GeoJSON).
+- Fournir un notebook reproductible avec un pipeline d'entraînement/validation et un rendu de soumission.
 
-### 2. Créer l'environnement conda
+✨ **Points forts**
+
+- Données GeoJSON prêtes à l'emploi (`data/train.geojson`, `data/test.geojson`).
+- Notebook interactif pour l'exploration et la reproduction : `Notebook.ipynb`.
+- Exemple de sortie : `outputs/submission_hybrid.csv`.
+
+**Aperçu rapide**
+
+1. Créez un environnement à partir de `environment.yml`.
+2. Lancez Jupyter et ouvrez `Notebook.ipynb`.
+3. Explorez les cellules : préparation des données → features → entraînement → export de soumission.
+
+**Structure du dépôt**
+
+- `environment.yml` - configuration Conda pour reproduire l'environnement.
+- `Notebook.ipynb` - notebook principal (exploration & pipeline).
+- `data/` - jeux de données GeoJSON (`train.geojson`, `test.geojson`).
+- `outputs/` - résultats et soumissions exemple.
+
+**Installation rapide**
+
 ```bash
 conda env create -f environment.yml
-conda activate kaggle_project
+conda activate urban-patterns
+jupyter lab
 ```
 
-### 3. Ajouter les données
-Créer un dossier `data/` à la racine du projet et y placer les fichiers Kaggle :
-```
-ML---Projet-Kaggle/
-├── data/
-│   ├── train.geojson
-│   └── test.geojson
-├── Notebook.ipynb
-├── environment.yml
-└── README.md
-```
+Ouvrez ensuite `Notebook.ipynb` dans Jupyter Lab/Notebook.
 
-**Les données ne sont pas sur Git** (trop volumineuses). Téléchargez-les depuis Kaggle ou demandez-les au propriétaire du projet.
+**Données**
 
-### 4. Ouvrir le notebook
-```bash
-code .
-```
-Dans VS Code :
-- Ouvrir `Notebook.ipynb`
-- Sélectionner l'interpréteur Python : `kaggle_project`
-- Exécuter les cellules
+- Les fichiers GeoJSON sont fournis dans le dossier `data/` pour un démarrage immédiat.
+- Le notebook montre comment charger, visualiser et convertir ces données en features exploitables.
 
-## Structure du projet
-```
-├── data/                  # Données (non versionnées)
-├── outputs/               # Sorties du modèle (créé automatiquement)
-├── Notebook.ipynb         # Pipeline ML principal
-├── environment.yml        # Dépendances conda
-└── README.md             # Ce fichier
-```
+**Résultats**
 
-## Pipeline
-1. Data Loading & Preprocessing
-2. Feature Engineering & Dimensionality Reduction
-3. Learning Algorithms
-4. Evaluation
-5. Submission
+- Un exemple de soumission est présent dans `outputs/submission_hybrid.csv`.
 
-## Collaboration
-Dépôt GitHub privé. Pour ajouter un collaborateur : Settings → Collaborators sur GitHub.
+**À propos / Contact**
+
+Si vous voulez une démo, une version web ou intégrer ce pipeline dans un workflow CI, contactez-moi.
+
+---
+
+Merci d'avoir regardé ! Si vous souhaitez un badge, une capture d'écran ou une page de démonstration, je peux l'ajouter.
