@@ -1,11 +1,11 @@
 # Urban Pattern Recognition
 
-🌆 **But du projet**
+**But du projet**
 
 - Explorer et reconnaître des motifs urbains à partir de données géospatiales (GeoJSON).
 - Fournir un notebook reproductible avec un pipeline d'entraînement/validation et un rendu de soumission.
 
-✨ **Points forts**
+**Points forts**
 
 - Données GeoJSON prêtes à l'emploi (`data/train.geojson`, `data/test.geojson`).
 - Notebook interactif pour l'exploration et la reproduction : `Notebook.ipynb`.
